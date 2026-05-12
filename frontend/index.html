@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEE/NEET Study Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#06060a;--surface:#0d0d14;--card:#10101a;--border:#1a1a2e;--text:#f0f0f8;--muted:#4a4a6a;--dim:#2a2a3e;--accent:#7c83ff;--accent-glow:rgba(124,131,255,0.12);--bull:#00e676;--bear:#ff3d57}
+body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(124,131,255,0.06) 0%,transparent 60%);pointer-events:none;z-index:0}
+.header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;flex-shrink:0}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand-tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.25em;color:var(--muted);text-transform:uppercase}
+.brand-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.02em;color:var(--text)}
+.brand-name em{font-style:normal;color:var(--accent)}
+.header-right{display:flex;align-items:center;gap:12px}
+.upload-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;cursor:pointer;transition:all 0.2s}
+.upload-btn:hover{border-color:var(--accent);color:var(--accent)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--bull);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.status-text{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--bull);letter-spacing:0.08em}
+input[type="file"]{display:none}
+.chat-area{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;position:relative;z-index:1}
+.chat-area::-webkit-scrollbar{width:4px}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;opacity:0.5}
+.empty-icon{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;color:var(--accent);letter-spacing:-0.04em}
+.empty-text{font-size:14px;color:var(--muted);text-align:center;line-height:1.6}
+.suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+.suggestion{padding:6px 14px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);cursor:pointer;transition:all 0.2s}
+.suggestion:hover{border-color:var(--accent);color:var(--accent)}
+.message{display:flex;gap:12px;max-width:780px;animation:msgIn 0.3s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.message.user{align-self:flex-end;flex-direction:row-reverse}
+.message.assistant{align-self:flex-start}
+.avatar{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;flex-shrink:0;margin-top:2px}
+.message.user .avatar{background:rgba(124,131,255,0.15);color:var(--accent);border:1px solid rgba(124,131,255,0.2)}
+.message.assistant .avatar{background:rgba(0,230,118,0.1);color:var(--bull);border:1px solid rgba(0,230,118,0.2)}
+.bubble{padding:12px 16px;border-radius:10px;font-size:14px;line-height:1.6;max-width:100%}
+.message.user .bubble{background:rgba(124,131,255,0.08);border:1px solid rgba(124,131,255,0.15);color:var(--text);border-radius:10px 2px 10px 10px}
+.message.assistant .bubble{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:2px 10px 10px 10px}
+.sources{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.sources-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:6px}
+.source-item{font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:4px;line-height:1.4;cursor:pointer;transition:border-color 0.2s;max-height:40px;overflow:hidden}
+.source-item:hover{border-color:var(--accent)}
+.source-item.expanded{max-height:none;color:var(--text)}
+.typing{display:flex;gap:4px;padding:4px 0}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:typing 1.2s ease-in-out infinite}
+.typing span:nth-child(2){animation-delay:0.2s}
+.typing span:nth-child(3){animation-delay:0.4s}
+@keyframes typing{0%,100%{opacity:0.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+.input-area{padding:16px 24px;border-top:1px solid var(--border);position:relative;z-index:1;flex-shrink:0}
+.input-wrap{display:flex;gap:10px;align-items:flex-end;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;transition:border-color 0.2s}
+.input-wrap:focus-within{border-color:var(--accent)}
+textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:14px;resize:none;max-height:120px;line-height:1.5}
+textarea::placeholder{color:var(--muted)}
+.send-btn{width:32px;height:32px;border-radius:6px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.2s;color:#fff;font-size:16px}
+.send-btn:hover{opacity:0.85}
+.send-btn:disabled{opacity:0.3;cursor:not-allowed}
+.input-hint{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:0.05em}
+.toast{position:fixed;bottom:80px;right:24px;padding:10px 16px;border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;z-index:100;display:none}
+.toast.success{background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.3);color:var(--bull)}
+.toast.error{background:rgba(255,61,87,0.1);border:1px solid rgba(255,61,87,0.3);color:var(--bear)}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="brand">
+    <div class="brand-tag">JEE · NEET · Study Assistant</div>
+    <div class="brand-name">Study<em>.</em>AI</div>
+  </div>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="status-dot"></div>
+      <div class="status-text">READY</div>
+    </div>
+    <label class="upload-btn" for="pdf-upload">↑ UPLOAD PDF</label>
+    <input type="file" id="pdf-upload" accept=".pdf" onchange="uploadPDF(this)">
+  </div>
+</div>
+<div class="chat-area" id="chat-area">
+  <div class="empty-state" id="empty-state">
+    <div class="empty-icon">Study.</div>
+    <div class="empty-text">Ask any question from your NCERT textbook.<br>Upload a PDF or start asking from the indexed material.</div>
+    <div class="suggestions">
+      <div class="suggestion" onclick="ask('What is the speed of light?')">What is the speed of light?</div>
+      <div class="suggestion" onclick="ask('Explain dimensional analysis')">Explain dimensional analysis</div>
+      <div class="suggestion" onclick="ask('What are SI units?')">What are SI units?</div>
+      <div class="suggestion" onclick="ask('What is significant figures?')">What is significant figures?</div>
+    </div>
+  </div>
+</div>
+<div class="input-area">
+  <div class="input-wrap">
+    <textarea id="question-input" placeholder="Ask a question from your textbook..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendQuestion()}"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+    <button class="send-btn" id="send-btn" onclick="sendQuestion()">↑</button>
+  </div>
+  <div class="input-hint">Press Enter to send · Shift+Enter for new line · Upload PDF to index new material</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+let isLoading=false;
+function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type}`;t.style.display='block';setTimeout(()=>t.style.display='none',3000)}
+function hideEmpty(){const e=document.getElementById('empty-state');if(e)e.remove()}
+function addMessage(role,content,sources=[]){
+  hideEmpty();
+  const area=document.getElementById('chat-area');
+  const div=document.createElement('div');
+  div.className=`message ${role}`;
+  const avatar=role==='user'?'YOU':'AI';
+  let sourcesHtml='';
+  if(sources.length>0){sourcesHtml=`<div class="sources"><div class="sources-label">Source excerpts</div>${sources.map(s=>`<div class="source-item" onclick="this.classList.toggle('expanded')">${s}</div>`).join('')}</div>`}
+  div.innerHTML=`<div class="avatar">${avatar}</div><div class="bubble">${content}${sourcesHtml}</div>`;
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+}
+function addTyping(){
+  hideEmpty();
+  const area=document.getElementById('chat-area');
+  const div=document.createElement('div');
+  div.className='message assistant';div.id='typing-indicator';
+  div.innerHTML=`<div class="avatar">AI</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  area.appendChild(div);area.scrollTop=area.scrollHeight;
+}
+function removeTyping(){const t=document.getElementById('typing-indicator');if(t)t.remove()}
+async function ask(question){document.getElementById('question-input').value=question;sendQuestion()}
+async function sendQuestion(){
+  if(isLoading)return;
+  const input=document.getElementById('question-input');
+  const question=input.value.trim();
+  if(!question)return;
+  input.value='';input.style.height='auto';
+  isLoading=true;document.getElementById('send-btn').disabled=true;
+  addMessage('user',question);addTyping();
+  try{
+    const res=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question})});
+    const data=await res.json();
+    removeTyping();addMessage('assistant',data.answer,data.sources||[]);
+  }catch(e){removeTyping();addMessage('assistant','Something went wrong. Is the server running?')}
+  isLoading=false;document.getElementById('send-btn').disabled=false;input.focus();
+}
+async function uploadPDF(input){
+  const file=input.files[0];if(!file)return;
+  showToast('Indexing PDF...','success');
+  const formData=new FormData();formData.append('file',file);
+  try{const res=await fetch('/upload',{method:'POST',body:formData});const data=await res.json();showToast(`✓ ${data.message}`,'success')}
+  catch(e){showToast('Upload failed','error')}
+  input.value='';
+}
+</script>
+</body>
+</html>
