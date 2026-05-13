@@ -29,9 +29,5 @@ def retrieve(query:str)->str:
     combined = list(dict.fromkeys(faiss_chunks + bm25_chunks))
     return combined[:TOP_K]
 
-#if __name__ == "__main__":
-    #retrieve("What is the speed of light")
-
-    
          
         

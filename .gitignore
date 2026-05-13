@@ -2,5 +2,8 @@ venv/
 __pycache__/
 *.pyc
 .env
-models/
-data/
+data/*.pdf
+models/faiss.index
+models/chunks.pkl
+models/bm25.pkl
+.DS_Store
