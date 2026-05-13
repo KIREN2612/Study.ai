@@ -1,4 +1,3 @@
-from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 import pickle
@@ -9,15 +8,12 @@ CHUNKS_PATH = "models/chunks.pkl"
 BM25_PATH = "models/bm25.pkl"
 TOP_K = 5
 
-def retrieve(query:str)->str:
+def retrieve(query:str,model,faiss_index)->list:
     with open(CHUNKS_PATH,"rb") as f:
         chunks = pickle.load(f)
         
     with open(BM25_PATH,"rb") as f:
         bm25 = pickle.load(f)
-        
-    faiss_index = faiss.read_index(FAISS_INDEX_PATH)
-    model = SentenceTransformer(EMBEDDING_MODEL)
     
     embedded_query = np.array(model.encode([query]),dtype = "float32")
     
@@ -27,7 +23,4 @@ def retrieve(query:str)->str:
     bm25_chunks = bm25.get_top_n(query.lower().split(),chunks,n=TOP_K)
     
     combined = list(dict.fromkeys(faiss_chunks + bm25_chunks))
-    return combined[:TOP_K]
-
-         
-        
+    return combined[:TOP_K]        
