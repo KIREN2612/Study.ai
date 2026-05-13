@@ -3,7 +3,4 @@ __pycache__/
 *.pyc
 .env
 data/*.pdf
-models/faiss.index
-models/chunks.pkl
-models/bm25.pkl
 .DS_Store
