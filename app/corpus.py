@@ -68,9 +68,11 @@ def load_corpus_index():
     print("Corpus index loaded from disk")
     return index,chunks,bm25
 
-def prepare_corpus(model):   
-    if os.path.exists(INDEX_PATH):
-        return load_corpus_index()
-    else:
-        build_corpus_index(model)
-        return load_corpus_index()
+def prepare_corpus(model):
+    
+    if not os.path.exists(INDEX_PATH):
+        raise FileNotFoundError(
+            "Prebuilt corpus index not found."
+        )
+
+    return load_corpus_index()

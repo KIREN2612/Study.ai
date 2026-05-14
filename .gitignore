@@ -1,5 +1,6 @@
 venv/
 __pycache__/
+corpus/
 *.pyc
 .env
 data/*.pdf
