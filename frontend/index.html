@@ -34,6 +34,7 @@
     }
   }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
   * { box-sizing: border-box; }
   body { font-family: 'DM Sans', sans-serif; }
@@ -42,7 +43,6 @@
   .chat-scroll::-webkit-scrollbar { width: 4px; }
   .chat-scroll::-webkit-scrollbar-thumb { background: #b8e5b2; border-radius: 2px; }
 
-  /* Book spines */
   .book-spine {
     border-radius: 2px 2px 0 0;
     width: 14px;
@@ -50,14 +50,12 @@
     transition: height 0.3s ease;
   }
 
-  /* Message animation */
   @keyframes msgIn {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   .msg-anim { animation: msgIn 0.25s ease forwards; }
 
-  /* Typing dots */
   @keyframes blink {
     0%, 100% { opacity: 0.2; transform: translateY(0); }
     50%       { opacity: 1;   transform: translateY(-3px); }
@@ -66,55 +64,60 @@
   .dot2 { animation: blink 1.2s ease-in-out infinite 0.2s; }
   .dot3 { animation: blink 1.2s ease-in-out infinite 0.4s; }
 
-  /* Sidebar active state */
   .nav-item { transition: background 0.15s, color 0.15s; }
-  .nav-item:hover, .nav-item.active {
-    background: #ddf3d9;
-    color: #1e5e24;
-  }
+  .nav-item:hover, .nav-item.active { background: #ddf3d9; color: #1e5e24; }
   .nav-item.active .nav-icon { color: #27782e; }
 
-  /* Input focus ring override */
   .chat-input:focus { outline: none; }
 
-  /* Chip hover */
   .chip { transition: background 0.15s, border-color 0.15s; }
   .chip:hover { background: #ddf3d9; border-color: #87cf7f; }
 
-  /* Upload button */
   .upload-btn { transition: background 0.15s, border-color 0.15s; }
   .upload-btn:hover { background: #ddf3d9; border-color: #56b44d; }
 
-  /* Send button */
   .send-btn { transition: opacity 0.15s; }
   .send-btn:hover { opacity: 0.85; }
 
-  /* Toast */
   @keyframes toastIn  { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
   @keyframes toastOut { from { opacity:1; } to { opacity:0; } }
   .toast-show { animation: toastIn 0.2s ease forwards; }
   .toast-hide { animation: toastOut 0.3s ease forwards; }
 
-  /* Mobile sidebar toggle */
+  .source-card { transition: background 0.15s, border-color 0.15s; cursor: pointer; }
+  .source-card:hover { background: #f1faf0; border-color: #87cf7f; }
+
+  #source-sidebar {
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+  #source-sidebar.open {
+    transform: translateX(0);
+  }
+
   @media (max-width: 768px) {
     #sidebar { transform: translateX(-100%); transition: transform 0.25s ease; position: fixed; z-index: 50; height: 100%; }
     #sidebar.open { transform: translateX(0); }
     #overlay { display: none; }
     #overlay.open { display: block; }
+    #source-sidebar { position: fixed; right: 0; top: 0; height: 100%; z-index: 45; width: 100% !important; }
   }
+  /* Markdown rendered answer styles */
+.msg-markdown p  { margin-bottom: 0.5rem; }
+.msg-markdown ul { list-style: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+.msg-markdown ol { list-style: decimal; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+.msg-markdown li { margin-bottom: 0.25rem; }
+.msg-markdown strong { font-weight: 600; color: #1e5e24; }
+.msg-markdown code { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; background: #ddf3d9; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.msg-markdown h3, .msg-markdown h4 { font-weight: 600; color: #27782e; margin-bottom: 0.25rem; }
 </style>
 </head>
 <body class="bg-leaf-50 h-screen flex overflow-hidden">
 
-<!-- Mobile overlay -->
 <div id="overlay" class="fixed inset-0 bg-black/20 z-40 hidden" onclick="toggleSidebar()"></div>
 
-<!-- ════════════════════════════════════════════════
-     SIDEBAR
-════════════════════════════════════════════════ -->
+<!-- LEFT SIDEBAR -->
 <aside id="sidebar" class="w-60 bg-white border-r border-leaf-200 flex flex-col flex-shrink-0 h-full">
-
-  <!-- Logo -->
   <div class="px-5 py-5 border-b border-leaf-100">
     <div class="font-display text-2xl font-semibold text-leaf-700 leading-none">
       Study<span class="text-leaf-400">.</span>AI
@@ -122,10 +125,7 @@
     <div class="font-mono text-[10px] text-leaf-400 tracking-widest mt-1 uppercase">JEE · NEET Assistant</div>
   </div>
 
-  <!-- Nav -->
   <nav class="px-3 pt-4 flex-1 overflow-y-auto sidebar-scroll space-y-0.5">
-
-    <!-- Main -->
     <p class="font-mono text-[9px] text-leaf-400 tracking-widest uppercase px-2 mb-2">Main</p>
     <button onclick="setView('chat')" id="nav-chat" class="nav-item active nav-icon w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-700 font-medium">
       <i class="ti ti-message-circle nav-icon text-leaf-500 text-base"></i> Chat
@@ -134,22 +134,21 @@
       <i class="ti ti-history nav-icon text-leaf-400 text-base"></i> History
     </button>
 
-    <!-- Resources -->
     <p class="font-mono text-[9px] text-leaf-400 tracking-widest uppercase px-2 mt-5 mb-2">Resources</p>
     <button onclick="selectSubject('Physics')" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
       <i class="ti ti-atom nav-icon text-leaf-400 text-base"></i>
       <span>Physics</span>
-      <span class="ml-auto font-mono text-[10px] bg-leaf-100 text-leaf-600 px-2 py-0.5 rounded-full">Ch 1–15</span>
+      <span class="ml-auto font-mono text-[10px] bg-leaf-100 text-leaf-600 px-2 py-0.5 rounded-full">Ch 1–7</span>
     </button>
     <button onclick="selectSubject('Chemistry')" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
       <i class="ti ti-flask nav-icon text-leaf-400 text-base"></i>
       <span>Chemistry</span>
-      <span class="ml-auto font-mono text-[10px] bg-leaf-100 text-leaf-600 px-2 py-0.5 rounded-full">Ch 1–12</span>
+      <span class="ml-auto font-mono text-[10px] bg-leaf-100 text-leaf-400 px-2 py-0.5 rounded-full">Soon</span>
     </button>
-    <button onclick="selectSubject('Biology')" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
-      <i class="ti ti-dna nav-icon text-leaf-400 text-base"></i>
-      <span>Biology</span>
-      <span class="ml-auto font-mono text-[10px] bg-leaf-100 text-leaf-600 px-2 py-0.5 rounded-full">Ch 1–22</span>
+    <button onclick="selectSubject('Maths')" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
+      <i class="ti ti-math nav-icon text-leaf-400 text-base"></i>
+      <span>Maths</span>
+      <span class="ml-auto font-mono text-[10px] bg-leaf-100 text-leaf-400 px-2 py-0.5 rounded-full">Soon</span>
     </button>
     <button class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
       <i class="ti ti-file-text nav-icon text-leaf-400 text-base"></i>
@@ -157,83 +156,98 @@
       <span id="pdf-count" class="ml-auto font-mono text-[10px] bg-leaf-100 text-leaf-600 px-2 py-0.5 rounded-full">0</span>
     </button>
 
-    <!-- Tools -->
     <p class="font-mono text-[9px] text-leaf-400 tracking-widest uppercase px-2 mt-5 mb-2">Tools</p>
-    <button class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
-      <i class="ti ti-pencil nav-icon text-leaf-400 text-base"></i> Practice MCQs
+    <button class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-400 cursor-not-allowed opacity-50" title="Coming soon">
+      <i class="ti ti-pencil nav-icon text-leaf-300 text-base"></i> Practice MCQs
     </button>
-    <button class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
-      <i class="ti ti-chart-bar nav-icon text-leaf-400 text-base"></i> Progress
+    <button class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-400 cursor-not-allowed opacity-50" title="Coming soon">
+      <i class="ti ti-chart-bar nav-icon text-leaf-300 text-base"></i> Progress
     </button>
     <button class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-leaf-600">
       <i class="ti ti-settings nav-icon text-leaf-400 text-base"></i> Settings
     </button>
   </nav>
 
-  <!-- Book shelf art -->
   <div class="px-4 pt-3 pb-4 border-t border-leaf-100">
-    <div class="flex items-end gap-[3px] h-14 mb-2" id="bookshelf">
-      <!-- JS renders books here -->
-    </div>
+    <div class="flex items-end gap-[3px] h-14 mb-2" id="bookshelf"></div>
     <p class="font-mono text-[10px] text-leaf-400 text-center tracking-wider">Your study shelf</p>
   </div>
 </aside>
 
-<!-- ════════════════════════════════════════════════
-     MAIN CONTENT
-════════════════════════════════════════════════ -->
-<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- MAIN CONTENT -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
 
-  <!-- Top bar -->
   <header class="bg-white border-b border-leaf-200 px-5 py-3 flex items-center justify-between flex-shrink-0">
     <div class="flex items-center gap-3">
-      <!-- Mobile hamburger -->
       <button onclick="toggleSidebar()" class="md:hidden text-leaf-500 text-xl">
         <i class="ti ti-menu-2"></i>
       </button>
       <div>
         <div id="topbar-title" class="font-display text-base font-semibold text-leaf-800">Ask your textbook</div>
-        <div id="topbar-sub" class="font-mono text-[10px] text-leaf-400 tracking-wide mt-0.5">NCERT Physics · Chapter 1 active</div>
+        <div id="topbar-sub" class="font-mono text-[10px] text-leaf-400 tracking-wide mt-0.5">NCERT Physics · Class 11 loaded</div>
       </div>
     </div>
     <div class="flex items-center gap-2">
-      <!-- AI status -->
       <div class="hidden sm:flex items-center gap-2 mr-2">
         <span class="w-2 h-2 rounded-full bg-leaf-400 animate-pulse"></span>
         <span class="font-mono text-[10px] text-leaf-500 tracking-widest uppercase">Ready</span>
       </div>
-      <!-- Upload button -->
       <label class="upload-btn flex items-center gap-2 px-3 py-1.5 rounded-full border border-leaf-300 bg-leaf-50 text-leaf-700 text-xs font-medium cursor-pointer">
         <i class="ti ti-upload text-sm text-leaf-500"></i>
         <span class="hidden sm:inline">Upload PDF</span>
         <input type="file" accept=".pdf" class="hidden" onchange="handleUpload(this)">
       </label>
-      <!-- Clear chat -->
       <button onclick="clearChat()" title="Clear chat" class="upload-btn flex items-center gap-1 px-3 py-1.5 rounded-full border border-leaf-200 bg-leaf-50 text-leaf-500 text-xs cursor-pointer">
         <i class="ti ti-trash text-sm"></i>
       </button>
     </div>
   </header>
 
-  <!-- Chat body -->
-  <div class="flex-1 overflow-y-auto chat-scroll px-4 sm:px-8 py-6 flex flex-col gap-4" id="chat-body">
+  <!-- Chat + Source panel -->
+  <div class="flex-1 flex overflow-hidden">
 
-    <!-- Welcome state -->
-    <div id="welcome-state" class="flex-1 flex flex-col items-center justify-center gap-4 my-auto py-10">
-      <div class="w-16 h-16 rounded-2xl bg-leaf-100 flex items-center justify-center border border-leaf-200">
-        <i class="ti ti-books text-3xl text-leaf-500"></i>
+    <div class="flex-1 overflow-y-auto chat-scroll px-4 sm:px-8 py-6 flex flex-col gap-4" id="chat-body">
+      <div id="welcome-state" class="flex-1 flex flex-col items-center justify-center gap-4 my-auto py-10">
+        <div class="w-16 h-16 rounded-2xl bg-leaf-100 flex items-center justify-center border border-leaf-200">
+          <i class="ti ti-books text-3xl text-leaf-500"></i>
+        </div>
+        <div class="text-center">
+          <div class="font-display text-xl text-leaf-800 font-semibold">What do you want to study?</div>
+          <div class="text-sm text-leaf-500 mt-1 leading-relaxed">Ask anything from NCERT Physics Class 11.<br>I'll answer with exact source excerpts.</div>
+        </div>
+        <div class="flex flex-wrap gap-2 justify-center mt-1 max-w-lg">
+          <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What is dimensional analysis?')">Dimensional analysis</button>
+          <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Explain significant figures')">Significant figures</button>
+          <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What are SI base units?')">SI base units</button>
+          <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Derive equations of motion')">Equations of motion</button>
+          <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What is Newton\'s second law?')">Newton's 2nd law</button>
+          <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Explain work energy theorem')">Work energy theorem</button>
+        </div>
       </div>
-      <div class="text-center">
-        <div class="font-display text-xl text-leaf-800 font-semibold">What do you want to study?</div>
-        <div class="text-sm text-leaf-500 mt-1 leading-relaxed">Ask anything from your NCERT textbooks.<br>I'll answer with source excerpts.</div>
+    </div>
+
+    <!-- SOURCE SIDEBAR -->
+    <div id="source-sidebar" class="w-80 bg-white border-l border-leaf-200 flex flex-col flex-shrink-0 h-full">
+      <div class="px-4 py-3 border-b border-leaf-100 flex items-center justify-between">
+        <div>
+          <div class="font-display text-sm font-semibold text-leaf-800">Source</div>
+          <div id="source-sidebar-file" class="font-mono text-[10px] text-leaf-400 mt-0.5">—</div>
+        </div>
+        <button onclick="closeSourceSidebar()" class="w-6 h-6 flex items-center justify-center rounded-lg text-leaf-400 hover:bg-leaf-50 hover:text-leaf-600 transition-colors">
+          <i class="ti ti-x text-sm"></i>
+        </button>
       </div>
-      <div class="flex flex-wrap gap-2 justify-center mt-1 max-w-lg">
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What is dimensional analysis?')">Dimensional analysis</button>
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Explain significant figures')">Significant figures</button>
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What are SI base units?')">SI base units</button>
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Derive equations of motion')">Equations of motion</button>
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What is Newton\\'s second law?')">Newton's 2nd law</button>
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Explain Bohr\\'s atomic model')">Bohr's atomic model</button>
+      <div class="px-4 py-2 border-b border-leaf-100 flex items-center gap-2">
+        <span class="font-mono text-[10px] text-leaf-500 bg-leaf-50 border border-leaf-200 px-2 py-0.5 rounded-full">
+          Chunk <span id="source-sidebar-chunk">—</span>
+        </span>
+        <span class="font-mono text-[10px] text-leaf-400">Retrieved passage</span>
+      </div>
+      <div class="flex-1 overflow-y-auto sidebar-scroll px-4 py-4">
+        <p id="source-sidebar-text" class="text-sm text-leaf-900 leading-relaxed whitespace-pre-wrap"></p>
+      </div>
+      <div class="px-4 py-3 border-t border-leaf-100">
+        <p class="font-mono text-[10px] text-leaf-400 text-center">This is the exact passage the answer was drawn from</p>
       </div>
     </div>
 
@@ -246,7 +260,7 @@
         id="chat-input"
         class="chat-input flex-1 bg-transparent text-sm text-leaf-900 resize-none max-h-32 leading-relaxed placeholder-leaf-400"
         placeholder="Ask a question from your textbook..."
-        rows="1",
+        rows="1"
         oninput="autoResize(this)"
         onkeydown="handleKey(event)"
       ></textarea>
@@ -264,108 +278,93 @@
   <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium shadow-sm" id="toast-inner"></div>
 </div>
 
-<!-- ════════════════════════════════════════════════
-     JAVASCRIPT
-════════════════════════════════════════════════ -->
 <script>
 /* ─── State ─── */
-let messages = [];
-let pdfCount  = 0;
+let messages       = [];
+let pdfCount       = 0;
 let currentSubject = 'Physics';
-let isLoading = false;
+let isLoading      = false;
 
-/* ─── Knowledge base (demo answers) ─── */
-const KB = {
-  'dimensional analysis': {
-    answer: `Dimensional analysis is a technique used to check the correctness of equations and to convert units. Every physical quantity is expressed in terms of fundamental dimensions:<br><br>
-    <span class="font-mono text-xs bg-leaf-50 border border-leaf-100 rounded px-2 py-1 block my-2">[M] Mass · [L] Length · [T] Time · [A] Current · [K] Temperature</span>
-    The <strong>principle of homogeneity</strong> states that both sides of a valid physical equation must have identical dimensions. If they don't match, the equation is certainly wrong — though a dimensionally correct equation may still be physically incorrect.`,
-    source: 'NCERT Physics Part I · Ch. 2 — Units & Measurements · p. 22'
-  },
-  'significant figures': {
-    answer: `Significant figures are the digits in a measurement that are reliably known, plus one estimated digit. Key rules:<br><br>
-    <ul class="list-disc ml-4 mt-1 space-y-1 text-sm">
-      <li>All non-zero digits are significant</li>
-      <li>Zeros between non-zero digits are significant</li>
-      <li>Trailing zeros in a decimal number are significant</li>
-      <li>Leading zeros (like 0.004) are <em>not</em> significant</li>
-    </ul>`,
-    source: 'NCERT Physics Part I · Ch. 2 — Units & Measurements · p. 26'
-  },
-  'si base units': {
-    answer: `The SI system defines 7 base units:<br><br>
-    <div class="font-mono text-xs bg-leaf-50 border border-leaf-100 rounded p-2 my-2 space-y-1">
-      <div><span class="text-leaf-600">metre (m)</span> — length</div>
-      <div><span class="text-leaf-600">kilogram (kg)</span> — mass</div>
-      <div><span class="text-leaf-600">second (s)</span> — time</div>
-      <div><span class="text-leaf-600">ampere (A)</span> — electric current</div>
-      <div><span class="text-leaf-600">kelvin (K)</span> — thermodynamic temperature</div>
-      <div><span class="text-leaf-600">mole (mol)</span> — amount of substance</div>
-      <div><span class="text-leaf-600">candela (cd)</span> — luminous intensity</div>
-    </div>
-    All other SI units are derived from these 7.`,
-    source: 'NCERT Physics Part I · Ch. 2 — Units & Measurements · p. 17'
-  },
-  'equations of motion': {
-    answer: `The three kinematic equations for uniform acceleration are:<br><br>
-    <div class="font-mono text-xs bg-leaf-50 border border-leaf-100 rounded p-3 my-2 space-y-2">
-      <div><strong>v = u + at</strong></div>
-      <div><strong>s = ut + ½at²</strong></div>
-      <div><strong>v² = u² + 2as</strong></div>
-    </div>
-    where <em>u</em> = initial velocity, <em>v</em> = final velocity, <em>a</em> = uniform acceleration, <em>t</em> = time, <em>s</em> = displacement. These hold only when acceleration is constant.`,
-    source: "NCERT Physics Part I · Ch. 3 — Motion in a Straight Line · p. 45"
-  },
-  "newton": {
-    answer: `Newton's second law states that the net force acting on a body equals the rate of change of its linear momentum:<br><br>
-    <div class="font-mono text-xs bg-leaf-50 border border-leaf-100 rounded p-3 my-2">
-      <strong>F = ma</strong>&nbsp;&nbsp;(when mass is constant)
-    </div>
-    The SI unit of force is the <strong>newton (N)</strong> = kg·m/s². The law implies that force and acceleration are always in the same direction. It's the most powerful of the three laws as it gives a quantitative measure of force.`,
-    source: "NCERT Physics Part I · Ch. 5 — Laws of Motion · p. 87"
-  },
-  "bohr": {
-    answer: `Bohr's atomic model (1913) proposed three postulates:<br><br>
-    <ol class="list-decimal ml-4 mt-1 space-y-1 text-sm">
-      <li>Electrons revolve in fixed circular orbits (stationary states) without radiating energy.</li>
-      <li>Only orbits where angular momentum = <em>nh/2π</em> (n = 1,2,3…) are allowed.</li>
-      <li>Energy is emitted or absorbed only when an electron jumps between orbits: <em>E = hν</em>.</li>
-    </ol><br>
-    This successfully explained the <strong>hydrogen spectrum</strong> but failed for multi-electron atoms.`,
-    source: "NCERT Chemistry Part I · Ch. 2 — Structure of Atom · p. 41"
-  }
-};
+// KEY FIX: store sources in a JS array, never embed raw text in onclick
+// Each entry: { source, chunk_id, excerpt }
+let sourceStore = [];
 
-function getAnswer(q) {
-  q = q.toLowerCase();
-  for (const key in KB) {
-    if (q.includes(key)) return KB[key];
-  }
-  return {
-    answer: `That's a great question! Based on your NCERT textbooks, here's an explanation:<br><br>
-    This concept involves understanding fundamental principles covered in the relevant chapter. The key ideas relate to how physical quantities interact and how we can use mathematical relationships to describe them accurately.<br><br>
-    <em>For a more detailed answer, connect the backend with your actual NCERT PDF and the RAG pipeline will pull exact passages.</em>`,
-    source: `NCERT ${currentSubject} · Relevant chapter`
-  };
+/* ─── Source sidebar ─── */
+function openSourceSidebar(storeIndex) {
+  // read from the array — no string escaping needed at all
+  const s = sourceStore[storeIndex];
+  if (!s) return;
+  document.getElementById('source-sidebar-file').textContent  = s.source;
+  document.getElementById('source-sidebar-chunk').textContent = `${s.chunk_id} · Page ${s.page_num ?? '?'}`;
+  document.getElementById('source-sidebar-text').textContent  = s.full_text;
+  document.getElementById('source-sidebar').classList.add('open');
+}
+
+function closeSourceSidebar() {
+  document.getElementById('source-sidebar').classList.remove('open');
+}
+
+/* ─── Build source cards HTML ─── */
+function buildSourceCards(sources) {
+  if (!sources || sources.length === 0) return '';
+
+  // store sources in the array, get their indices back
+  const cards = sources.map((s) => {
+    const storeIndex = sourceStore.length;
+    sourceStore.push(s);  // push the whole object safely
+
+    // onclick just passes the array index — no raw text in HTML at all
+    return `
+      <div
+        class="source-card mt-1 px-3 py-2 rounded-xl border border-leaf-100 bg-leaf-50"
+        onclick="openSourceSidebar(${storeIndex})"
+        title="Click to view full passage"
+      >
+        <div class="flex items-center gap-1.5 mb-1">
+          <i class="ti ti-file-text text-xs text-leaf-400"></i>
+          <span class="font-mono text-[10px] text-leaf-500 font-medium">${escapeHtml(s.source)}</span>
+          <span class="ml-auto font-mono text-[10px] text-leaf-300">chunk ${s.chunk_id} · p.${s.page_num ?? '?'}</span>
+        </div>
+        <p class="text-xs text-leaf-600 leading-relaxed line-clamp-2">${escapeHtml(s.excerpt)}</p>
+        <div class="mt-1.5 flex items-center gap-1 text-leaf-400">
+          <i class="ti ti-eye text-[10px]"></i>
+          <span class="font-mono text-[9px]">View passage</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="mt-3 pt-2.5 border-t border-leaf-100">
+      <p class="font-mono text-[9px] text-leaf-400 tracking-widest uppercase mb-1.5">Sources</p>
+      ${cards}
+    </div>`;
+}
+
+/* ─── Escape HTML special chars for safe innerHTML display ─── */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 /* ─── Render bookshelf ─── */
 function renderBookshelf() {
-  const heights = [52, 42, 60, 36, 50, 44, 56, 38, 48, 58, 40, 54];
+  const heights = [52,42,60,36,50,44,56,38,48,58,40,54];
   const colors  = ['#87cf7f','#b8e5b2','#56b44d','#ddf3d9','#34973a','#a8d5a2','#27782e','#c8e6c0','#66bb6a','#43a047','#b2dfdb','#81c784'];
-  const shelf   = document.getElementById('bookshelf');
-  shelf.innerHTML = heights.map((h, i) =>
-    `<div class="book-spine" style="height:${h}px;background:${colors[i % colors.length]}"></div>`
+  document.getElementById('bookshelf').innerHTML = heights.map((h,i) =>
+    `<div class="book-spine" style="height:${h}px;background:${colors[i%colors.length]}"></div>`
   ).join('');
 }
 
 /* ─── Chat rendering ─── */
-function addMessage(role, content, source = '') {
+function addMessage(role, content, sources = []) {
   const welcome = document.getElementById('welcome-state');
   if (welcome) welcome.remove();
 
-  const body = document.getElementById('chat-body');
-  const isUser = role === 'user';
+  const body    = document.getElementById('chat-body');
+  const isUser  = role === 'user';
   const wrapper = document.createElement('div');
   wrapper.className = `flex gap-3 msg-anim ${isUser ? 'justify-end' : 'justify-start'}`;
 
@@ -375,13 +374,11 @@ function addMessage(role, content, source = '') {
 
   const bubbleClass = isUser
     ? 'bg-leaf-100 border border-leaf-200 text-leaf-900 rounded-2xl rounded-tr-sm'
-    : 'bg-white border border-leaf-200 text-gray-800 rounded-2xl rounded-tl-sm';
+    : 'bg-white border border-leaf-200 text-gray-800 rounded-2xl rounded-tl-sm msg-markdown';
 
-  const sourceHtml = (!isUser && source) ? `
-    <div class="mt-3 pt-2.5 border-t border-leaf-100 flex items-center gap-1.5">
-      <i class="ti ti-bookmark text-xs text-leaf-400"></i>
-      <span class="font-mono text-[10px] text-leaf-400 leading-tight">${source}</span>
-    </div>` : '';
+  const sourceHtml = (!isUser && sources.length > 0)
+    ? buildSourceCards(sources)
+    : '';
 
   wrapper.innerHTML = `
     ${!isUser ? `<div class="w-7 h-7 rounded-lg flex-shrink-0 mt-0.5 flex items-center justify-center ${avatarClass}">
@@ -404,7 +401,7 @@ function addTyping() {
   const welcome = document.getElementById('welcome-state');
   if (welcome) welcome.remove();
   const body = document.getElementById('chat-body');
-  const div = document.createElement('div');
+  const div  = document.createElement('div');
   div.id = 'typing-msg';
   div.className = 'flex gap-3 msg-anim';
   div.innerHTML = `
@@ -440,23 +437,33 @@ async function sendMessage() {
   addMessage('user', q);
   addTyping();
 
-  // Try real backend first, fall back to demo
   try {
     const res = await fetch('/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: q })
     });
-    if (!res.ok) throw new Error('no backend');
+
+    if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+
     const data = await res.json();
     removeTyping();
-    addMessage('assistant', data.answer, (data.sources || [])[0] || '');
-  } catch {
-    // Demo fallback
-    await new Promise(r => setTimeout(r, 900 + Math.random() * 500));
+
+    if (data.error) {
+      addMessage('assistant', `<span class="text-red-500">${escapeHtml(data.error)}</span>`, []);
+    } else {
+      // answer text: use textContent not innerHTML to avoid XSS
+      // but we want newlines to show — so replace \n with <br>
+      const safeAnswer = marked.parse(data.answer);
+      addMessage('assistant', safeAnswer, data.sources || []);
+    }
+
+  } catch (err) {
     removeTyping();
-    const { answer, source } = getAnswer(q);
-    addMessage('assistant', answer, source);
+    addMessage('assistant',
+      `<span class="text-red-400 text-xs">Error: ${escapeHtml(err.message)}</span>`,
+      []
+    );
   }
 
   isLoading = false;
@@ -482,28 +489,31 @@ function autoResize(el) {
 }
 
 /* ─── Clear chat ─── */
-function clearChat() {
-  const body = document.getElementById('chat-body');
-  body.innerHTML = `
+async function clearChat() {
+  await fetch('/clear-upload', { method: 'DELETE' });
+  pdfCount = 0;
+  document.getElementById('pdf-count').textContent = 0;
+  document.getElementById('chat-body').innerHTML = `
     <div id="welcome-state" class="flex-1 flex flex-col items-center justify-center gap-4 my-auto py-10">
       <div class="w-16 h-16 rounded-2xl bg-leaf-100 flex items-center justify-center border border-leaf-200">
         <i class="ti ti-books text-3xl text-leaf-500"></i>
       </div>
       <div class="text-center">
         <div class="font-display text-xl text-leaf-800 font-semibold">What do you want to study?</div>
-        <div class="text-sm text-leaf-500 mt-1 leading-relaxed">Ask anything from your NCERT textbooks.<br>I'll answer with source excerpts.</div>
+        <div class="text-sm text-leaf-500 mt-1 leading-relaxed">Ask anything from NCERT Physics Class 11.<br>I'll answer with exact source excerpts.</div>
       </div>
       <div class="flex flex-wrap gap-2 justify-center mt-1 max-w-lg">
         <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What is dimensional analysis?')">Dimensional analysis</button>
         <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Explain significant figures')">Significant figures</button>
         <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What are SI base units?')">SI base units</button>
         <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Derive equations of motion')">Equations of motion</button>
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What is Newton\\'s second law?')">Newton's 2nd law</button>
-        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Explain Bohr\\'s atomic model')">Bohr's atomic model</button>
+        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('What is Newton\'s second law?')">Newton's 2nd law</button>
+        <button class="chip px-3 py-1.5 rounded-full border border-leaf-200 bg-white text-sm text-leaf-600" onclick="askChip('Explain work energy theorem')">Work energy theorem</button>
       </div>
-    </div>
-  `;
-  messages = [];
+    </div>`;
+  messages    = [];
+  sourceStore = [];  // clear the store too
+  closeSourceSidebar();
 }
 
 /* ─── PDF upload ─── */
@@ -514,15 +524,13 @@ async function handleUpload(input) {
   try {
     const form = new FormData();
     form.append('file', file);
-    const res = await fetch('/upload', { method: 'POST', body: form });
+    const res  = await fetch('/upload', { method: 'POST', body: form });
     const data = await res.json();
     pdfCount++;
     document.getElementById('pdf-count').textContent = pdfCount;
     showToast(`✓ ${file.name} indexed`, 'success');
   } catch {
-    pdfCount++;
-    document.getElementById('pdf-count').textContent = pdfCount;
-    showToast(`✓ ${file.name} ready (demo mode)`, 'success');
+    showToast(`Upload failed. Is the server running?`, 'error');
   }
   input.value = '';
 }
@@ -530,7 +538,6 @@ async function handleUpload(input) {
 /* ─── Subject selector ─── */
 function selectSubject(subject) {
   currentSubject = subject;
-  document.getElementById('topbar-title').textContent = `Ask your textbook`;
   document.getElementById('topbar-sub').textContent = `NCERT ${subject} · Active`;
   showToast(`Switched to ${subject}`, 'info');
 }
@@ -558,8 +565,8 @@ function showToast(msg, type = 'success') {
     info:    'bg-blue-50 border-blue-200 text-blue-700',
   };
   inner.className = `flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium ${styles[type] || styles.success}`;
-  inner.innerHTML = `<i class="ti ti-${type === 'error' ? 'alert-circle' : 'check'} text-base"></i> ${msg}`;
-  toast.classList.remove('hidden', 'toast-hide');
+  inner.innerHTML = `<i class="ti ti-${type === 'error' ? 'alert-circle' : 'info-circle'} text-base"></i> ${msg}`;
+  toast.classList.remove('hidden','toast-hide');
   toast.classList.add('toast-show');
   setTimeout(() => {
     toast.classList.add('toast-hide');
