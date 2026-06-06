@@ -8,6 +8,8 @@ from app.ingest import extract_text_by_page, chunk_pages, build_index
 from app.retrieval import retrieve
 from app.llm import generate_answer
 from app.corpus import prepare_corpus
+from app.database import engine,Base
+from app.auth.router import router as auth_router
 import shutil
 import os
 
@@ -19,6 +21,7 @@ os.makedirs("models", exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine) #creates tables if not already exists
     print("RAG Assistant ready to rock and roll")
     app.state.model = SentenceTransformer(EMBEDDING_MODEL)
     print("Model loaded")
@@ -36,6 +39,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(auth_router)  #adds auth
 
 class Query(BaseModel):
     question: str
