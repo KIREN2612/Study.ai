@@ -11,6 +11,7 @@ from app.corpus import prepare_corpus
 from app.database import engine,Base
 from app.auth.router import router as auth_router
 from app.documents.router import router as documents_router
+from app.reranker import rerank
 import shutil
 import os
 
@@ -103,6 +104,7 @@ def ask(query: Query,request:Request):
         if key not in seen:
             seen.add(key)
             combined_results.append(chunk)
+    combined_results = rerank(query.question,combined_results,top_k = 5)
     
     answer = generate_answer(query.question, combined_results)
     

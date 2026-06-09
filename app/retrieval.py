@@ -1,7 +1,8 @@
 import faiss
 import numpy as np
+from app.reranker import rerank
 
-TOP_K = 5  # increase return size to make expansion meaningful
+TOP_K = 15  # increase return size to make expansion meaningful
 
 def retrieve(query: str, model, faiss_index, chunks, bm25) -> list:
 
@@ -10,7 +11,7 @@ def retrieve(query: str, model, faiss_index, chunks, bm25) -> list:
 
     # Context window expansion — only expand top 2 FAISS hits
     expanded_indices = set()
-    for idx in indices[0].tolist()[:2]:
+    for idx in indices[0].tolist()[:3]:
         expanded_indices.add(idx)
 
         if idx - 1 >= 0:           # bugfix: was > 0, missed index 1
@@ -37,4 +38,4 @@ def retrieve(query: str, model, faiss_index, chunks, bm25) -> list:
             seen.add(key)
             combined.append(chunk)
 
-    return combined[:TOP_K]  # now TOP_K=5, so expansion actually survives
+    return rerank(query, combined, top_k=5)
