@@ -7,7 +7,7 @@ from app.auth import service
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-def current_user(
+def get_current_user(
     token:str = Depends(oauth2_scheme),
     db:Session = Depends(get_db)
 )->User:

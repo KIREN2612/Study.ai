@@ -21,7 +21,7 @@ def verify_password(plain:str,hashed:str)->bool:
 
 def create_access_token(user_id:str)->str:
     payload = {
-        "sub" : user_id,
+        "sub" : str(user_id),
         "exp": datetime.utcnow() + timedelta(minutes=30) #key being valid for the first 30 min after creation
     }
     token = jwt.encode(payload,SECRET_KEY,algorithm=ALGORITHM)

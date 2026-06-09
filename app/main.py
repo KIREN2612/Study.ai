@@ -10,6 +10,7 @@ from app.llm import generate_answer
 from app.corpus import prepare_corpus
 from app.database import engine,Base
 from app.auth.router import router as auth_router
+from app.documents.router import router as documents_router
 import shutil
 import os
 
@@ -18,6 +19,7 @@ EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 # Ensure required directories exist on startup
 os.makedirs("data", exist_ok=True)
 os.makedirs("models", exist_ok=True)
+os.makedirs("indices", exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,6 +42,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)  #adds auth
+app.include_router(documents_router) #adds multiple documents from users.
 
 class Query(BaseModel):
     question: str
