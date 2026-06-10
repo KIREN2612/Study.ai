@@ -13,6 +13,7 @@ from app.auth.router import router as auth_router
 from app.documents.router import router as documents_router
 from app.reranker import rerank
 from app.websearch import web_search
+from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 
@@ -46,9 +47,17 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)  #adds auth
 app.include_router(documents_router) #adds multiple documents from users.
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class Query(BaseModel):
     question: str
-    websearch:bool = False #false by default
+    web_search:bool = False #false by default
 
 @app.get("/health")
 def get_health():
@@ -93,7 +102,7 @@ def ask(query: Query, request: Request):
         user_results = retrieve(query.question, model, user_index, user_chunks, user_bm25)
 
     web_results = []                          # always initialize
-    if query.websearch:                       # fix: was query.web_search
+    if query.web_search:                       # fix: was query.web_search
         web_results = web_search(query.question)
 
     # deduplicate corpus results first, then append web results after
@@ -136,9 +145,3 @@ def clear_upload(request: Request):
     return {
     "message":"Uploaded Documents are deleted"
     }
-
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
-
-@app.get("/")
-def serve():
-    return FileResponse("frontend/index.html")
