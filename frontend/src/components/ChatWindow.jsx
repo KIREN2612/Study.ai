@@ -23,6 +23,7 @@ export default function ChatWindow() {
   const [input, setInput]         = useState('')
   const [loading, setLoading]     = useState(false)
   const [webSearch, setWebSearch] = useState(false)
+  const [searchMode, setSearchMode] = useState('both')  // ← add this
   const [sources, setSources]     = useState([])
   const [showSources, setShowSources] = useState(false)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
@@ -60,7 +61,7 @@ export default function ChatWindow() {
     scrollToBottom()
 
     try {
-      const res = await askAPI.ask(q, webSearch)
+      const res = await askAPI.ask(q, webSearch, searchMode)
       const { answer, sources: srcs } = res.data
 
       const assistantMsg = {
@@ -208,6 +209,25 @@ export default function ChatWindow() {
             </span>
           </div>
         )}
+
+        {/* Source selector */}
+        <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          {[['corpus', '📚', 'Textbook'], ['both', '🔀', 'Both'], ['user_docs', '📄', 'My Docs']].map(([mode, icon, label]) => (
+            <button
+              key={mode}
+              onClick={() => setSearchMode(mode)}
+              className="px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+              style={{
+                background: searchMode === mode ? 'var(--bg-card)' : 'transparent',
+                color: searchMode === mode ? 'var(--text-primary)' : 'var(--text-muted)',
+                border: searchMode === mode ? '1px solid var(--border-md)' : '1px solid transparent',
+              }}
+            >
+              <span>{icon}</span>
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
+        </div>
 
         <div
           className="flex items-end gap-2 rounded-2xl p-3 transition-all"

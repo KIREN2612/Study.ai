@@ -57,8 +57,8 @@ export const documentsAPI = {
 
 // ── Ask ───────────────────────────────────────────────
 export const askAPI = {
-  ask: (question, webSearch = false) =>
-    client.post('/ask', { question, web_search: webSearch }),
+  ask: (question, webSearch = false, searchMode = 'both') =>
+  client.post('/ask', { question, web_search: webSearch, search_mode: searchMode }),
 }
 
 // ── Upload (session-scoped, no auth needed) ───────────

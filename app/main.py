@@ -1,6 +1,4 @@
-from fastapi import FastAPI, UploadFile, File,Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, UploadFile, File,Request,Depends
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -12,9 +10,15 @@ from app.database import engine,Base
 from app.auth.router import router as auth_router
 from app.documents.router import router as documents_router
 from app.reranker import rerank
+from app.dependencies import get_current_user
+from app.auth.models import User
+from app.database import get_db
+from sqlalchemy.orm import Session
 from app.websearch import web_search
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
+import faiss
+import pickle
 import os
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -36,11 +40,6 @@ async def lifespan(app: FastAPI):
     app.state.global_chunks = chunks
     app.state.global_bm25 = bm25
     
-    #temproary docs
-    app.state.user_index = None
-    app.state.user_chunks = []
-    app.state.user_bm25 = None
-    
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -58,6 +57,7 @@ app.add_middleware(
 class Query(BaseModel):
     question: str
     web_search:bool = False #false by default
+    search_mode :str = "both" #corpus,user_docs,both
 
 @app.get("/health")
 def get_health():
@@ -85,27 +85,49 @@ async def upload_pdf(request:Request,file: UploadFile = File(...)):
     return {"message": f"Indexed {len(chunk_dicts)} chunks from {file.filename}"}
 
 @app.post("/ask")
-def ask(query: Query, request: Request):
+def ask(
+    query: Query,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     model = request.app.state.model
     global_index = request.app.state.global_index
     global_chunks = request.app.state.global_chunks
     global_bm25 = request.app.state.global_bm25
 
-    user_index = request.app.state.user_index
-    user_chunks = request.app.state.user_chunks
-    user_bm25 = request.app.state.user_bm25
+    # corpus retrieval
+    global_results = []
+    if query.search_mode in ("corpus", "both"):
+        global_results = retrieve(query.question, model, global_index, global_chunks, global_bm25)
 
-    global_results = retrieve(query.question, model, global_index, global_chunks, global_bm25)
-
+    # per-user disk-based retrieval
     user_results = []
-    if user_index is not None:
-        user_results = retrieve(query.question, model, user_index, user_chunks, user_bm25)
+    if query.search_mode in ("user_docs", "both"):
+        user_dir = f"indices/{current_user.id}"
+        if os.path.exists(user_dir):
+            index_files = [f for f in os.listdir(user_dir) if f.endswith(".index")]
+            for index_file in index_files:
+                doc_id = index_file.replace(".index", "")
+                index_path = f"{user_dir}/{doc_id}.index"
+                chunks_path = f"{user_dir}/{doc_id}_chunks.pkl"
+                bm25_path = f"{user_dir}/{doc_id}_bm25.pkl"
+                if not all(os.path.exists(p) for p in [index_path, chunks_path, bm25_path]):
+                    continue
+                doc_index = faiss.read_index(index_path)
+                with open(chunks_path, "rb") as f:
+                    doc_chunks = pickle.load(f)
+                with open(bm25_path, "rb") as f:
+                    doc_bm25 = pickle.load(f)
+                results = retrieve(query.question, model, doc_index, doc_chunks, doc_bm25)
+                user_results.extend(results)
 
-    web_results = []                          # always initialize
-    if query.web_search:                       # fix: was query.web_search
+    # web search
+    web_results = []
+    if query.web_search:
         web_results = web_search(query.question)
 
-    # deduplicate corpus results first, then append web results after
+    # deduplicate
     combined_results = []
     seen = set()
     for chunk in global_results + user_results:
@@ -114,8 +136,7 @@ def ask(query: Query, request: Request):
             seen.add(key)
             combined_results.append(chunk)
 
-    combined_results = combined_results + web_results   # fix: outside loop
-
+    combined_results = combined_results + web_results
     combined_results = rerank(query.question, combined_results, top_k=5)
 
     answer = generate_answer(query.question, combined_results)
