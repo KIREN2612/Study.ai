@@ -12,6 +12,7 @@ from app.database import engine,Base
 from app.auth.router import router as auth_router
 from app.documents.router import router as documents_router
 from app.reranker import rerank
+from app.websearch import web_search
 import shutil
 import os
 
@@ -47,6 +48,7 @@ app.include_router(documents_router) #adds multiple documents from users.
 
 class Query(BaseModel):
     question: str
+    websearch:bool = False #false by default
 
 @app.get("/health")
 def get_health():
@@ -74,56 +76,56 @@ async def upload_pdf(request:Request,file: UploadFile = File(...)):
     return {"message": f"Indexed {len(chunk_dicts)} chunks from {file.filename}"}
 
 @app.post("/ask")
-def ask(query: Query,request:Request):
-    
+def ask(query: Query, request: Request):
     model = request.app.state.model
     global_index = request.app.state.global_index
     global_chunks = request.app.state.global_chunks
     global_bm25 = request.app.state.global_bm25
-    
+
     user_index = request.app.state.user_index
     user_chunks = request.app.state.user_chunks
     user_bm25 = request.app.state.user_bm25
-    
-    global_results = retrieve(query.question,model,global_index,global_chunks,global_bm25)
-    
+
+    global_results = retrieve(query.question, model, global_index, global_chunks, global_bm25)
+
     user_results = []
-    if user_index is  not None:
-        user_results = retrieve(
-        query.question,
-        model,
-        user_index,
-        user_chunks,
-        user_bm25
-    )
-    
+    if user_index is not None:
+        user_results = retrieve(query.question, model, user_index, user_chunks, user_bm25)
+
+    web_results = []                          # always initialize
+    if query.websearch:                       # fix: was query.web_search
+        web_results = web_search(query.question)
+
+    # deduplicate corpus results first, then append web results after
     combined_results = []
     seen = set()
     for chunk in global_results + user_results:
-        key = chunk["source"],chunk["chunk_id"]
+        key = (chunk["source"], chunk["chunk_id"])
         if key not in seen:
             seen.add(key)
             combined_results.append(chunk)
-    combined_results = rerank(query.question,combined_results,top_k = 5)
-    
+
+    combined_results = combined_results + web_results   # fix: outside loop
+
+    combined_results = rerank(query.question, combined_results, top_k=5)
+
     answer = generate_answer(query.question, combined_results)
-    
-    # format sources cleanly for the frontend
+
     sources = [
         {
             "source": c["source"],
             "chunk_id": c["chunk_id"],
-            "page_num" : c.get("page_number","?"),
+            "page_num": c.get("page_number", "?"),
             "excerpt": c["text"][:150] + "...",
-            "full_text":c["text"],
+            "full_text": c["text"],
         }
         for c in combined_results[:3]
     ]
-    
+
     return {
         "question": query.question,
         "answer": answer,
-        "sources": sources
+        "sources": sources,
     }
     
 @app.delete("/clear-upload")

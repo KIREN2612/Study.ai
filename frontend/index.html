@@ -87,12 +87,37 @@
   .source-card { transition: background 0.15s, border-color 0.15s; cursor: pointer; }
   .source-card:hover { background: #f1faf0; border-color: #87cf7f; }
 
+  /* Web source card — slightly different tint to distinguish web results */
+  .source-card-web { background: #eff6ff; border-color: #bfdbfe; }
+  .source-card-web:hover { background: #dbeafe; border-color: #93c5fd; }
+
   #source-sidebar {
     transform: translateX(100%);
     transition: transform 0.25s ease;
   }
   #source-sidebar.open {
     transform: translateX(0);
+  }
+
+  /* ── Web search toggle pill ── */
+  #websearch-toggle {
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  #websearch-toggle.active {
+    background: #ddf3d9;
+    border-color: #56b44d;
+    color: #1e5e24;
+  }
+  #websearch-toggle.active .toggle-dot {
+    background: #27782e;
+    transform: translateX(12px);
+  }
+  .toggle-dot {
+    transition: transform 0.2s ease, background 0.15s;
+    width: 10px; height: 10px; border-radius: 9999px;
+    background: #b8e5b2;
+    transform: translateX(0);
+    flex-shrink: 0;
   }
 
   @media (max-width: 768px) {
@@ -102,14 +127,15 @@
     #overlay.open { display: block; }
     #source-sidebar { position: fixed; right: 0; top: 0; height: 100%; z-index: 45; width: 100% !important; }
   }
+
   /* Markdown rendered answer styles */
-.msg-markdown p  { margin-bottom: 0.5rem; }
-.msg-markdown ul { list-style: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
-.msg-markdown ol { list-style: decimal; padding-left: 1.25rem; margin-bottom: 0.5rem; }
-.msg-markdown li { margin-bottom: 0.25rem; }
-.msg-markdown strong { font-weight: 600; color: #1e5e24; }
-.msg-markdown code { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; background: #ddf3d9; padding: 0.1rem 0.3rem; border-radius: 4px; }
-.msg-markdown h3, .msg-markdown h4 { font-weight: 600; color: #27782e; margin-bottom: 0.25rem; }
+  .msg-markdown p  { margin-bottom: 0.5rem; }
+  .msg-markdown ul { list-style: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+  .msg-markdown ol { list-style: decimal; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+  .msg-markdown li { margin-bottom: 0.25rem; }
+  .msg-markdown strong { font-weight: 600; color: #1e5e24; }
+  .msg-markdown code { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; background: #ddf3d9; padding: 0.1rem 0.3rem; border-radius: 4px; }
+  .msg-markdown h3, .msg-markdown h4 { font-weight: 600; color: #27782e; margin-bottom: 0.25rem; }
 </style>
 </head>
 <body class="bg-leaf-50 h-screen flex overflow-hidden">
@@ -238,7 +264,7 @@
         </button>
       </div>
       <div class="px-4 py-2 border-b border-leaf-100 flex items-center gap-2">
-        <span class="font-mono text-[10px] text-leaf-500 bg-leaf-50 border border-leaf-200 px-2 py-0.5 rounded-full">
+        <span id="source-sidebar-badge" class="font-mono text-[10px] text-leaf-500 bg-leaf-50 border border-leaf-200 px-2 py-0.5 rounded-full">
           Chunk <span id="source-sidebar-chunk">—</span>
         </span>
         <span class="font-mono text-[10px] text-leaf-400">Retrieved passage</span>
@@ -255,6 +281,25 @@
 
   <!-- Input bar -->
   <div class="bg-white border-t border-leaf-200 px-4 sm:px-8 py-4 flex-shrink-0">
+
+    <!-- Web search toggle — sits just above the textarea -->
+    <div class="flex items-center gap-2 mb-2.5">
+      <button
+        id="websearch-toggle"
+        onclick="toggleWebSearch()"
+        class="flex items-center gap-2 px-3 py-1 rounded-full border border-leaf-200 bg-white text-xs text-leaf-500 font-medium select-none"
+        title="Include live web results alongside textbook"
+      >
+        <i class="ti ti-world text-sm"></i>
+        <span class="hidden sm:inline">Web search</span>
+        <!-- mini slide-toggle -->
+        <span class="flex items-center w-6 h-4 bg-leaf-100 rounded-full border border-leaf-200 ml-1 relative overflow-hidden">
+          <span class="toggle-dot absolute left-1"></span>
+        </span>
+      </button>
+      <span id="websearch-label" class="font-mono text-[10px] text-leaf-400 tracking-wide">Textbook only</span>
+    </div>
+
     <div class="flex items-end gap-3 bg-leaf-50 border border-leaf-200 rounded-2xl px-4 py-3 focus-within:border-leaf-400 transition-colors">
       <textarea
         id="chat-input"
@@ -284,19 +329,51 @@ let messages       = [];
 let pdfCount       = 0;
 let currentSubject = 'Physics';
 let isLoading      = false;
+let useWebSearch   = false;   // tracks web search toggle state
 
-// KEY FIX: store sources in a JS array, never embed raw text in onclick
-// Each entry: { source, chunk_id, excerpt }
+// Store sources in a JS array — avoids any HTML-escaping issues with onclick
+// Each entry: { source, chunk_id, page_num, excerpt, full_text, isWeb }
 let sourceStore = [];
+
+/* ─── Web search toggle ─── */
+function toggleWebSearch() {
+  useWebSearch = !useWebSearch;
+  const btn   = document.getElementById('websearch-toggle');
+  const label = document.getElementById('websearch-label');
+  const input = document.getElementById('chat-input');
+  if (useWebSearch) {
+    btn.classList.add('active');
+    label.textContent = 'Textbook + web';
+    input.placeholder = 'Ask anything — textbook + live web…';
+    showToast('Web search on — results will include live sources', 'info');
+  } else {
+    btn.classList.remove('active');
+    label.textContent = 'Textbook only';
+    input.placeholder = 'Ask a question from your textbook...';
+    showToast('Web search off', 'info');
+  }
+}
 
 /* ─── Source sidebar ─── */
 function openSourceSidebar(storeIndex) {
-  // read from the array — no string escaping needed at all
   const s = sourceStore[storeIndex];
   if (!s) return;
-  document.getElementById('source-sidebar-file').textContent  = s.source;
-  document.getElementById('source-sidebar-chunk').textContent = `${s.chunk_id} · Page ${s.page_num ?? '?'}`;
-  document.getElementById('source-sidebar-text').textContent  = s.full_text;
+
+  const badge = document.getElementById('source-sidebar-badge');
+  const chunkSpan = document.getElementById('source-sidebar-chunk');
+
+  if (s.isWeb) {
+    // Web source: show URL badge instead of chunk
+    badge.className = 'font-mono text-[10px] text-blue-500 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full';
+    chunkSpan.textContent = 'web';
+    document.getElementById('source-sidebar-file').textContent = s.source;
+  } else {
+    badge.className = 'font-mono text-[10px] text-leaf-500 bg-leaf-50 border border-leaf-200 px-2 py-0.5 rounded-full';
+    chunkSpan.textContent = `${s.chunk_id} · Page ${s.page_num ?? '?'}`;
+    document.getElementById('source-sidebar-file').textContent = s.source;
+  }
+
+  document.getElementById('source-sidebar-text').textContent = s.full_text;
   document.getElementById('source-sidebar').classList.add('open');
 }
 
@@ -308,29 +385,51 @@ function closeSourceSidebar() {
 function buildSourceCards(sources) {
   if (!sources || sources.length === 0) return '';
 
-  // store sources in the array, get their indices back
   const cards = sources.map((s) => {
     const storeIndex = sourceStore.length;
-    sourceStore.push(s);  // push the whole object safely
+    const isWeb = s.page_num === 'web' || (typeof s.source === 'string' && s.source.startsWith('http'));
+    sourceStore.push({ ...s, isWeb });
 
-    // onclick just passes the array index — no raw text in HTML at all
-    return `
-      <div
-        class="source-card mt-1 px-3 py-2 rounded-xl border border-leaf-100 bg-leaf-50"
-        onclick="openSourceSidebar(${storeIndex})"
-        title="Click to view full passage"
-      >
-        <div class="flex items-center gap-1.5 mb-1">
-          <i class="ti ti-file-text text-xs text-leaf-400"></i>
-          <span class="font-mono text-[10px] text-leaf-500 font-medium">${escapeHtml(s.source)}</span>
-          <span class="ml-auto font-mono text-[10px] text-leaf-300">chunk ${s.chunk_id} · p.${s.page_num ?? '?'}</span>
-        </div>
-        <p class="text-xs text-leaf-600 leading-relaxed line-clamp-2">${escapeHtml(s.excerpt)}</p>
-        <div class="mt-1.5 flex items-center gap-1 text-leaf-400">
-          <i class="ti ti-eye text-[10px]"></i>
-          <span class="font-mono text-[9px]">View passage</span>
-        </div>
-      </div>`;
+    if (isWeb) {
+      // Web result card — blue tint
+      const shortUrl = escapeHtml(s.source).replace(/^https?:\/\//, '').substring(0, 45);
+      return `
+        <div
+          class="source-card source-card-web mt-1 px-3 py-2 rounded-xl border"
+          onclick="openSourceSidebar(${storeIndex})"
+          title="Click to view full web excerpt"
+        >
+          <div class="flex items-center gap-1.5 mb-1">
+            <i class="ti ti-world text-xs text-blue-400"></i>
+            <span class="font-mono text-[10px] text-blue-500 font-medium truncate">${shortUrl}</span>
+            <span class="ml-auto font-mono text-[10px] text-blue-300 flex-shrink-0">web</span>
+          </div>
+          <p class="text-xs text-blue-700 leading-relaxed line-clamp-2">${escapeHtml(s.excerpt)}</p>
+          <div class="mt-1.5 flex items-center gap-1 text-blue-300">
+            <i class="ti ti-eye text-[10px]"></i>
+            <span class="font-mono text-[9px]">View passage</span>
+          </div>
+        </div>`;
+    } else {
+      // Textbook result card — green tint
+      return `
+        <div
+          class="source-card mt-1 px-3 py-2 rounded-xl border border-leaf-100 bg-leaf-50"
+          onclick="openSourceSidebar(${storeIndex})"
+          title="Click to view full passage"
+        >
+          <div class="flex items-center gap-1.5 mb-1">
+            <i class="ti ti-file-text text-xs text-leaf-400"></i>
+            <span class="font-mono text-[10px] text-leaf-500 font-medium">${escapeHtml(s.source)}</span>
+            <span class="ml-auto font-mono text-[10px] text-leaf-300">chunk ${s.chunk_id} · p.${s.page_num ?? '?'}</span>
+          </div>
+          <p class="text-xs text-leaf-600 leading-relaxed line-clamp-2">${escapeHtml(s.excerpt)}</p>
+          <div class="mt-1.5 flex items-center gap-1 text-leaf-400">
+            <i class="ti ti-eye text-[10px]"></i>
+            <span class="font-mono text-[9px]">View passage</span>
+          </div>
+        </div>`;
+    }
   }).join('');
 
   return `
@@ -340,7 +439,7 @@ function buildSourceCards(sources) {
     </div>`;
 }
 
-/* ─── Escape HTML special chars for safe innerHTML display ─── */
+/* ─── Escape HTML special chars ─── */
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -412,6 +511,7 @@ function addTyping() {
       <span class="w-1.5 h-1.5 rounded-full bg-leaf-400 dot1"></span>
       <span class="w-1.5 h-1.5 rounded-full bg-leaf-400 dot2"></span>
       <span class="w-1.5 h-1.5 rounded-full bg-leaf-400 dot3"></span>
+      ${useWebSearch ? '<span class="font-mono text-[9px] text-blue-400 ml-1">+ web</span>' : ''}
     </div>
   `;
   body.appendChild(div);
@@ -441,7 +541,10 @@ async function sendMessage() {
     const res = await fetch('/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q })
+      body: JSON.stringify({
+        question: q,
+        websearch: useWebSearch   // sends the correct field name matching the Pydantic model
+      })
     });
 
     if (!res.ok) throw new Error(`Backend error: ${res.status}`);
@@ -452,8 +555,6 @@ async function sendMessage() {
     if (data.error) {
       addMessage('assistant', `<span class="text-red-500">${escapeHtml(data.error)}</span>`, []);
     } else {
-      // answer text: use textContent not innerHTML to avoid XSS
-      // but we want newlines to show — so replace \n with <br>
       const safeAnswer = marked.parse(data.answer);
       addMessage('assistant', safeAnswer, data.sources || []);
     }
@@ -512,7 +613,7 @@ async function clearChat() {
       </div>
     </div>`;
   messages    = [];
-  sourceStore = [];  // clear the store too
+  sourceStore = [];
   closeSourceSidebar();
 }
 
