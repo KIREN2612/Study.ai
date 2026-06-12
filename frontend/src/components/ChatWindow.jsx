@@ -1,5 +1,6 @@
+// src/components/ChatWindow.jsx
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Globe, Zap, BookOpen, ArrowDown } from 'lucide-react'
+import { Send, Globe, Zap, BookOpen, ArrowDown, Library, Shuffle, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { askAPI } from '../api/client'
 import MessageBubble from './MessageBubble'
@@ -18,27 +19,31 @@ I'm loaded with NCERT Physics chapters and can search the web too. Ask me anythi
 - *"Solve: A ball is thrown at 30° with speed 20 m/s"*`,
 }
 
-export default function ChatWindow() {
-  const [messages, setMessages]   = useState([WELCOME])
-  const [input, setInput]         = useState('')
-  const [loading, setLoading]     = useState(false)
-  const [webSearch, setWebSearch] = useState(false)
-  const [searchMode, setSearchMode] = useState('both')  // ← add this
-  const [sources, setSources]     = useState([])
-  const [showSources, setShowSources] = useState(false)
-  const [showScrollBtn, setShowScrollBtn] = useState(false)
+const SEARCH_MODES = [
+  { id: 'corpus',    label: 'Textbook', Icon: Library   },
+  { id: 'both',      label: 'Both',     Icon: Shuffle   },
+  { id: 'user_docs', label: 'My Docs',  Icon: FileText  },
+]
 
-  const bottomRef  = useRef(null)
-  const listRef    = useRef(null)
-  const inputRef   = useRef(null)
+export default function ChatWindow() {
+  const [messages,       setMessages]       = useState([WELCOME])
+  const [input,          setInput]          = useState('')
+  const [loading,        setLoading]        = useState(false)
+  const [webSearch,      setWebSearch]      = useState(false)
+  const [searchMode,     setSearchMode]     = useState('both')
+  const [sources,        setSources]        = useState([])
+  const [showSources,    setShowSources]    = useState(false)
+  const [showScrollBtn,  setShowScrollBtn]  = useState(false)
+
+  const bottomRef = useRef(null)
+  const listRef   = useRef(null)
+  const inputRef  = useRef(null)
 
   const scrollToBottom = useCallback((smooth = true) => {
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' })
   }, [])
 
-  useEffect(() => {
-    scrollToBottom(false)
-  }, [messages.length])
+  useEffect(() => { scrollToBottom(false) }, [messages.length])
 
   function handleScroll() {
     if (!listRef.current) return
@@ -51,8 +56,8 @@ export default function ChatWindow() {
     if (!q || loading) return
     setInput('')
 
-    const userMsg = { id: Date.now(), role: 'user', content: q }
-    const typingMsg = { id: 'typing', role: 'assistant', content: '', isTyping: true }
+    const userMsg   = { id: Date.now(),     role: 'user',      content: q }
+    const typingMsg = { id: 'typing',       role: 'assistant', content: '', isTyping: true }
 
     setMessages(prev => [...prev, userMsg, typingMsg])
     setLoading(true)
@@ -64,12 +69,7 @@ export default function ChatWindow() {
       const res = await askAPI.ask(q, webSearch, searchMode)
       const { answer, sources: srcs } = res.data
 
-      const assistantMsg = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: answer,
-        webSearch,
-      }
+      const assistantMsg = { id: Date.now() + 1, role: 'assistant', content: answer, webSearch }
 
       setMessages(prev => prev.filter(m => m.id !== 'typing').concat(assistantMsg))
 
@@ -79,8 +79,7 @@ export default function ChatWindow() {
       }
     } catch (err) {
       setMessages(prev => prev.filter(m => m.id !== 'typing'))
-      const msg = err.response?.data?.detail || 'Something went wrong. Please try again.'
-      toast.error(msg)
+      toast.error(err.response?.data?.detail || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
       setTimeout(() => inputRef.current?.focus(), 100)
@@ -88,10 +87,7 @@ export default function ChatWindow() {
   }
 
   function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      send()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
   function clearChat() {
@@ -103,35 +99,41 @@ export default function ChatWindow() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 h-14 border-b shrink-0"
-           style={{ borderColor: 'var(--border)' }}>
+
+      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between px-4 h-14 border-b shrink-0"
+        style={{ borderColor: 'var(--border)' }}
+      >
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
           <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
             Study Session
           </span>
         </div>
+
         <div className="flex items-center gap-3">
           {/* Web search toggle */}
-          <label className="flex items-center gap-2 cursor-pointer select-none group">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
             <Globe size={14} style={{ color: webSearch ? '#a5b4fc' : 'var(--text-muted)' }} />
-            <span className="text-xs font-medium hidden sm:inline"
-                  style={{ color: webSearch ? '#a5b4fc' : 'var(--text-muted)' }}>
+            <span
+              className="text-xs font-medium hidden sm:inline"
+              style={{ color: webSearch ? '#a5b4fc' : 'var(--text-muted)' }}
+            >
               Web search
             </span>
             <button
               role="switch"
               aria-checked={webSearch}
               onClick={() => setWebSearch(s => !s)}
-              className="toggle-track relative w-9 h-5 rounded-full transition-colors duration-200 outline-none"
+              className="relative w-9 h-5 rounded-full transition-colors duration-200 outline-none"
               style={{ background: webSearch ? 'rgba(99,102,241,0.5)' : 'var(--border-md)' }}
             >
               <span
-                className="toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow-sm"
+                className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow-sm transition-transform duration-200"
                 style={{
                   background: webSearch ? '#a5b4fc' : 'var(--text-muted)',
-                  transform: webSearch ? 'translateX(16px)' : 'translateX(0)',
+                  transform:  webSearch ? 'translateX(16px)' : 'translateX(0)',
                 }}
               />
             </button>
@@ -144,7 +146,7 @@ export default function ChatWindow() {
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
               style={{
                 background: showSources ? 'rgba(245,158,11,0.12)' : 'var(--bg-card)',
-                color: showSources ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                color:      showSources ? 'var(--accent-amber)'    : 'var(--text-secondary)',
                 border: '1px solid ' + (showSources ? 'rgba(245,158,11,0.2)' : 'var(--border)'),
               }}
             >
@@ -167,7 +169,7 @@ export default function ChatWindow() {
         </div>
       </div>
 
-      {/* Message list */}
+      {/* ── Message list ─────────────────────────────────────────────────── */}
       <div
         ref={listRef}
         onScroll={handleScroll}
@@ -177,7 +179,6 @@ export default function ChatWindow() {
           <MessageBubble key={msg.id} message={msg} />
         ))}
 
-        {/* Sources panel — inline after last message */}
         {showSources && sources.length > 0 && (
           <div className="pl-10">
             <SourcesPanel sources={sources} visible={showSources} />
@@ -187,19 +188,24 @@ export default function ChatWindow() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Scroll to bottom button */}
+      {/* ── Scroll-to-bottom button ──────────────────────────────────────── */}
       {showScrollBtn && (
         <button
           onClick={() => scrollToBottom()}
-          className="absolute bottom-24 right-6 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all animate-fade-in"
-          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-md)', color: 'var(--text-secondary)' }}
+          className="absolute bottom-24 right-6 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all"
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-md)',
+            color: 'var(--text-secondary)',
+          }}
         >
           <ArrowDown size={14} />
         </button>
       )}
 
-      {/* Input area */}
+      {/* ── Input area ───────────────────────────────────────────────────── */}
       <div className="shrink-0 px-4 sm:px-6 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
+
         {/* Web search active notice */}
         {webSearch && (
           <div className="flex items-center gap-1.5 mb-2 px-1">
@@ -210,40 +216,43 @@ export default function ChatWindow() {
           </div>
         )}
 
-        {/* Source selector */}
-        <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-          {[['corpus', '📚', 'Textbook'], ['both', '🔀', 'Both'], ['user_docs', '📄', 'My Docs']].map(([mode, icon, label]) => (
-            <button
-              key={mode}
-              onClick={() => setSearchMode(mode)}
-              className="px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
-              style={{
-                background: searchMode === mode ? 'var(--bg-card)' : 'transparent',
-                color: searchMode === mode ? 'var(--text-primary)' : 'var(--text-muted)',
-                border: searchMode === mode ? '1px solid var(--border-md)' : '1px solid transparent',
-              }}
-            >
-              <span>{icon}</span>
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
+        {/* Source mode selector — icons instead of emojis */}
+        <div
+          className="flex items-center gap-1 rounded-lg p-0.5 mb-2"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        >
+          {SEARCH_MODES.map(({ id, label, Icon }) => {
+            const active = searchMode === id
+            return (
+              <button
+                key={id}
+                onClick={() => setSearchMode(id)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex-1 justify-center"
+                style={{
+                  background: active ? 'var(--bg-card)'    : 'transparent',
+                  color:      active ? 'var(--text-primary)' : 'var(--text-muted)',
+                  border:     active ? '1px solid var(--border-md)' : '1px solid transparent',
+                }}
+              >
+                <Icon size={11} />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            )
+          })}
         </div>
 
+        {/* Textarea + send */}
         <div
           className="flex items-end gap-2 rounded-2xl p-3 transition-all"
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-md)',
-          }}
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-md)' }}
           onFocusCapture={e => e.currentTarget.style.borderColor = 'rgba(245,158,11,0.35)'}
-          onBlurCapture={e => e.currentTarget.style.borderColor = 'var(--border-md)'}
+          onBlurCapture={e  => e.currentTarget.style.borderColor = 'var(--border-md)'}
         >
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => {
               setInput(e.target.value)
-              // Auto-resize
               e.target.style.height = 'auto'
               e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
             }}
@@ -252,11 +261,7 @@ export default function ChatWindow() {
             disabled={loading}
             rows={1}
             className="flex-1 resize-none text-sm leading-relaxed bg-transparent outline-none disabled:opacity-50"
-            style={{
-              color: 'var(--text-primary)',
-              maxHeight: '140px',
-              minHeight: '22px',
-            }}
+            style={{ color: 'var(--text-primary)', maxHeight: '140px', minHeight: '22px' }}
           />
 
           <button
@@ -278,7 +283,7 @@ export default function ChatWindow() {
         </div>
 
         <p className="text-center text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
-          Press Enter to send · Shift+Enter for new line · Answers grounded in NCERT
+          Enter to send · Shift+Enter for new line · Answers grounded in NCERT
         </p>
       </div>
     </div>

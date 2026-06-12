@@ -1,0 +1,117 @@
+from fastapi import APIRouter, Depends, HTTPException, Request as FastAPIRequest
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.auth.models import User
+from app.flashcards.schemas import (
+    FlashCardGenerateRequest,
+    FlashCardResponse
+)
+from app.flashcards.models import FlashCard
+from app.flashcards.service import generate_flashcards
+from app.retrieval import retrieve
+
+import pickle
+
+router = APIRouter(prefix="/flashcards", tags=["flashcards"])
+
+
+@router.post("/generate", response_model=FlashCardResponse)
+def generate(
+    request: FlashCardGenerateRequest,
+    fastapi_request: FastAPIRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    if request.doc_id:
+
+        chunks_path = f"indices/{current_user.id}/{request.doc_id}_chunks.pkl"
+        
+        print("DOC ID:", request.doc_id)
+        print("PATH:", chunks_path)
+        
+        try:
+            with open(chunks_path, "rb") as f:
+                doc_chunks = pickle.load(f)
+
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail="Document chunks not found"
+            )
+
+        context = "\n\n".join(c["text"] for c in doc_chunks)
+
+    elif request.topic:
+
+        model = fastapi_request.app.state.model
+        global_index = fastapi_request.app.state.global_index
+        global_chunks = fastapi_request.app.state.global_chunks
+        global_bm25 = fastapi_request.app.state.global_bm25
+
+        chunks = retrieve(
+            request.topic,
+            model,
+            global_index,
+            global_chunks,
+            global_bm25
+        )
+
+        context = "\n\n".join(c["text"] for c in chunks)
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either topic or doc_id"
+        )
+
+    cards = generate_flashcards(context, request.num_cards)
+
+    for card in cards:
+
+        flashcard = FlashCard(
+            user_id=current_user.id,
+            doc_id=request.doc_id,
+            topic=request.topic,
+            question=card["question"],
+            answer=card["answer"]
+        )
+
+        db.add(flashcard)
+
+    db.commit()
+
+    return FlashCardResponse(flashcards=cards)
+
+@router.get("/{doc_id}", response_model=FlashCardResponse)
+def get_flashcards(
+    doc_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    flashcards = (
+        db.query(FlashCard)
+        .filter(
+            FlashCard.user_id == current_user.id,
+            FlashCard.doc_id == doc_id
+        )
+        .all()
+    )
+
+    if not flashcards:
+        raise HTTPException(
+            status_code=404,
+            detail="No flashcards found for this document"
+        )
+
+    cards = [
+        {
+            "question": card.question,
+            "answer": card.answer
+        }
+        for card in flashcards
+    ]
+
+    return FlashCardResponse(flashcards=cards)

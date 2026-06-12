@@ -13,6 +13,7 @@ from app.reranker import rerank
 from app.dependencies import get_current_user
 from app.auth.models import User
 from app.database import get_db
+from app.flashcards.router import router as flashcard_router
 from sqlalchemy.orm import Session
 from app.websearch import web_search
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)  #adds auth
 app.include_router(documents_router) #adds multiple documents from users.
+app.include_router(flashcard_router) #adds flashcards
 
 app.add_middleware(
     CORSMiddleware,
