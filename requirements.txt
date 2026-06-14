@@ -82,7 +82,7 @@ tavily==1.1.0
 tenacity==9.1.2
 threadpoolctl==3.6.0
 tokenizers==0.22.2
-torch==2.1.0+cpu
+torch==2.4.0+cpu
 tqdm==4.67.3
 transformers==4.57.6
 typing-extensions==4.15.0
