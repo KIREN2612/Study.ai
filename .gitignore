@@ -6,3 +6,8 @@ corpus/
 data/*.pdf
 .DS_Store
 node_modules/
+indices/
+.deepeval/
+data/
+models/*.index
+models/*.pkl
