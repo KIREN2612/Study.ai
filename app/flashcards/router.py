@@ -9,6 +9,7 @@ from app.flashcards.schemas import (
 )
 from app.flashcards.models import FlashCard
 from app.flashcards.service import generate_flashcards
+from app.flashcards.schemas import FlashCardItem
 from app.retrieval import retrieve
 
 import pickle
@@ -106,12 +107,6 @@ def get_flashcards(
             detail="No flashcards found for this document"
         )
 
-    cards = [
-        {
-            "question": card.question,
-            "answer": card.answer
-        }
-        for card in flashcards
-    ]
+    cards = [FlashCardItem(question=card.question, answer=card.answer) for card in flashcards]
 
     return FlashCardResponse(flashcards=cards)

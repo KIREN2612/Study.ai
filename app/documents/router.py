@@ -68,9 +68,13 @@ def delete_document(
     ).first()
     if not doc:
         raise HTTPException(status_code=404,detail="Document not found")
-    os.remove(f"indices/{current_user.id}/{doc_id}.index")
-    os.remove(f"indices/{current_user.id}/{doc_id}_chunks.pkl")
-    os.remove(f"indices/{current_user.id}/{doc_id}_bm25.pkl")
+    for path in [
+        f"indices/{current_user.id}/{doc_id}.index",
+        f"indices/{current_user.id}/{doc_id}_chunks.pkl",
+        f"indices/{current_user.id}/{doc_id}_bm25.pkl"
+    ]:
+        if os.path.exists(path):
+            os.remove(path)
     db.delete(doc)
     db.commit()
     return {"message":"deleted"}
