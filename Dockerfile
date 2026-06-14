@@ -18,7 +18,6 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 
 # Copy application code
 COPY app/ ./app/
-COPY corpus/ ./corpus/
 COPY models/ ./models/
 
 # Create runtime directories
