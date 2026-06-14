@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 aiofiles==25.1.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.5
@@ -81,7 +82,7 @@ tavily==1.1.0
 tenacity==9.1.2
 threadpoolctl==3.6.0
 tokenizers==0.22.2
-torch==2.1.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
 tqdm==4.67.3
 transformers==4.57.6
 typing-extensions==4.15.0
@@ -92,3 +93,4 @@ uuid-utils==0.15.0
 uvicorn==0.39.0
 yarl==1.22.0
 zstandard==0.25.0
+
