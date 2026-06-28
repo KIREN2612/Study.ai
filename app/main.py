@@ -1,11 +1,9 @@
 from fastapi import FastAPI, Request, Depends
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
-from typing import Literal
 from contextlib import asynccontextmanager
 from app.retrieval import retrieve
 from app.llm import generate_answer
-from app.corpus import prepare_corpus
 from app.database import engine, Base, get_db
 from app.auth.router import router as auth_router
 from app.documents.router import router as documents_router
@@ -33,11 +31,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     print("RAG Assistant ready to rock and roll")
     app.state.model = SentenceTransformer(EMBEDDING_MODEL)
-    print("Model loaded")
-    index, chunks, bm25 = prepare_corpus(app.state.model)
-    app.state.global_index = index
-    app.state.global_chunks = chunks
-    app.state.global_bm25 = bm25
+    print("Study.ai-upload a pdf to get started")
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -55,7 +49,6 @@ app.include_router(flashcard_router)
 class Query(BaseModel):
     question: str
     web_search: bool = False
-    search_mode: Literal["corpus", "user_docs", "both"] = "both"
 
 @app.get("/health")
 def get_health():
@@ -69,52 +62,36 @@ def ask(
     db: Session = Depends(get_db)
 ):
     model = request.app.state.model
-    global_index = request.app.state.global_index
-    global_chunks = request.app.state.global_chunks
-    global_bm25 = request.app.state.global_bm25
-
-    global_results = []
-    if query.search_mode in ("corpus", "both"):
-        global_results = retrieve(query.question, model, global_index, global_chunks, global_bm25)
 
     user_results = []
-    if query.search_mode in ("user_docs", "both"):
-        user_dir = f"indices/{current_user.id}"
-        if os.path.exists(user_dir):
-            index_files = [f for f in os.listdir(user_dir) if f.endswith(".index")]
-            for index_file in index_files:
-                doc_id = index_file.replace(".index", "")
-                index_path = f"{user_dir}/{doc_id}.index"
-                chunks_path = f"{user_dir}/{doc_id}_chunks.pkl"
-                bm25_path = f"{user_dir}/{doc_id}_bm25.pkl"
-                if not all(os.path.exists(p) for p in [index_path, chunks_path, bm25_path]):
-                    continue
-                doc_index = faiss.read_index(index_path)
-                with open(chunks_path, "rb") as f:
-                    doc_chunks = pickle.load(f)
-                with open(bm25_path, "rb") as f:
-                    doc_bm25 = pickle.load(f)
-                results = retrieve(query.question, model, doc_index, doc_chunks, doc_bm25)
-                user_results.extend(results)
+    user_dir = f"indices/{current_user.id}"
+    if os.path.exists(user_dir):
+        index_files = [f for f in os.listdir(user_dir) if f.endswith(".index")]
+        for index_file in index_files:
+            doc_id = index_file.replace(".index", "")
+            index_path = f"{user_dir}/{doc_id}.index"
+            chunks_path = f"{user_dir}/{doc_id}_chunks.pkl"
+            bm25_path = f"{user_dir}/{doc_id}_bm25.pkl"
+            if not all(os.path.exists(p) for p in [index_path, chunks_path, bm25_path]):
+                continue
+            doc_index = faiss.read_index(index_path)
+            with open(chunks_path, "rb") as f:
+                doc_chunks = pickle.load(f)
+            with open(bm25_path, "rb") as f:
+                doc_bm25 = pickle.load(f)
+            results = retrieve(query.question, model, doc_index, doc_chunks, doc_bm25)
+            user_results.extend(results)
 
     web_results = []
     if query.web_search:
         web_results = web_search(query.question)
 
-    combined_results = []
-    seen = set()
-    for chunk in global_results + user_results:
-        key = (chunk["source"], chunk["chunk_id"])
-        if key not in seen:
-            seen.add(key)
-            combined_results.append(chunk)
-
-    combined_results = combined_results + web_results
+    combined_results = user_results + web_results
 
     if not combined_results:
         return {
             "question": query.question,
-            "answer": "No relevant context found. Try switching search mode or uploading a document.",
+            "answer": "No results found. Upload a PDF or enable web search.",
             "sources": []
         }
 

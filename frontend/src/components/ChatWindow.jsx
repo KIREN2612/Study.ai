@@ -1,6 +1,6 @@
 // src/components/ChatWindow.jsx
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Globe, Zap, BookOpen, ArrowDown, Library, Shuffle, FileText } from 'lucide-react'
+import { Send, Globe, Zap, BookOpen, ArrowDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { askAPI } from '../api/client'
 import MessageBubble from './MessageBubble'
@@ -9,28 +9,22 @@ import SourcesPanel from './SourcesPanel'
 const WELCOME = {
   id: 'welcome',
   role: 'assistant',
-  content: `Hi! I'm **Study.AI**, your personal JEE & NEET assistant.
+  content: `Hi! I'm **Study.AI**, your personal study assistant.
 
-I'm loaded with NCERT Physics chapters and can search the web too. Ask me anything — concepts, derivations, previous year questions, or explanations.
+Upload any PDF — textbooks, notes, past papers — and ask me questions from it. Toggle web search on for live answers from the internet.
 
-**Try asking:**
-- *"Explain Newton's laws with examples"*
-- *"What is the photoelectric effect?"*
-- *"Solve: A ball is thrown at 30° with speed 20 m/s"*`,
+**Try:**
+- Upload your notes → *"Summarise the key points"*
+- *"Explain Newton's laws"* with web search on
+- *"What are important JEE Physics topics?"*`,
 }
 
-const SEARCH_MODES = [
-  { id: 'corpus',    label: 'Textbook', Icon: Library   },
-  { id: 'both',      label: 'Both',     Icon: Shuffle   },
-  { id: 'user_docs', label: 'My Docs',  Icon: FileText  },
-]
 
 export default function ChatWindow() {
   const [messages,       setMessages]       = useState([WELCOME])
   const [input,          setInput]          = useState('')
   const [loading,        setLoading]        = useState(false)
   const [webSearch,      setWebSearch]      = useState(false)
-  const [searchMode,     setSearchMode]     = useState('both')
   const [sources,        setSources]        = useState([])
   const [showSources,    setShowSources]    = useState(false)
   const [showScrollBtn,  setShowScrollBtn]  = useState(false)
@@ -66,7 +60,7 @@ export default function ChatWindow() {
     scrollToBottom()
 
     try {
-      const res = await askAPI.ask(q, webSearch, searchMode)
+      const res = await askAPI.ask(q, webSearch)
       const { answer, sources: srcs } = res.data
 
       const assistantMsg = { id: Date.now() + 1, role: 'assistant', content: answer, webSearch }
@@ -216,31 +210,6 @@ export default function ChatWindow() {
           </div>
         )}
 
-        {/* Source mode selector — icons instead of emojis */}
-        <div
-          className="flex items-center gap-1 rounded-lg p-0.5 mb-2"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
-        >
-          {SEARCH_MODES.map(({ id, label, Icon }) => {
-            const active = searchMode === id
-            return (
-              <button
-                key={id}
-                onClick={() => setSearchMode(id)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex-1 justify-center"
-                style={{
-                  background: active ? 'var(--bg-card)'    : 'transparent',
-                  color:      active ? 'var(--text-primary)' : 'var(--text-muted)',
-                  border:     active ? '1px solid var(--border-md)' : '1px solid transparent',
-                }}
-              >
-                <Icon size={11} />
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            )
-          })}
-        </div>
-
         {/* Textarea + send */}
         <div
           className="flex items-end gap-2 rounded-2xl p-3 transition-all"
@@ -283,7 +252,7 @@ export default function ChatWindow() {
         </div>
 
         <p className="text-center text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
-          Enter to send · Shift+Enter for new line · Answers grounded in NCERT
+          Enter to send · Shift+Enter for new line · Upload a PDF to get started
         </p>
       </div>
     </div>

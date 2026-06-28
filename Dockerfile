@@ -18,8 +18,6 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 
 # Copy application code
 COPY app/ ./app/
-COPY models/ ./models/
-
 # Create runtime directories
 RUN mkdir -p data indices
 
