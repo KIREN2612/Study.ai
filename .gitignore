@@ -5,3 +5,7 @@ corpus/
 .env
 data/*.pdf
 .DS_Store
+node_modules/
+indices/
+.deepeval/
+data/

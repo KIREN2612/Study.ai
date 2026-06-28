@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# System dependencies for PyMuPDF and FAISS
+# System dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -9,23 +9,19 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy and install requirements first (layer caching)
+# Install dependencies first (layer caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the embedding model so it's baked into the image
-# (avoids cold-start download on every Space restart)
+# Pre-download embedding model into image
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
-# Copy project files
+# Copy application code
 COPY app/ ./app/
-COPY frontend/ ./frontend/
-COPY models/ ./models/
+# Create runtime directories
+RUN mkdir -p data indices
 
-# Create data dir for uploaded PDFs
-RUN mkdir -p data
+# Railway dynamically assigns PORT
+EXPOSE 8000
 
-# HF Spaces runs on port 7860
-EXPOSE 7860
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -69,10 +69,7 @@ def load_corpus_index():
     return index,chunks,bm25
 
 def prepare_corpus(model):
-    
     if not os.path.exists(INDEX_PATH):
-        raise FileNotFoundError(
-            "Prebuilt corpus index not found."
-        )
-
+        print("Prebuilt index not found — building from corpus PDFs...")
+        return build_corpus_index(model)
     return load_corpus_index()
