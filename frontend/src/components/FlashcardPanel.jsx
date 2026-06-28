@@ -1,10 +1,6 @@
 // src/components/FlashcardPanel.jsx
 import { useState, useEffect } from 'react'
-import {
-  Layers, ChevronLeft, ChevronRight, RotateCcw,
-  Loader, AlertCircle, BookOpen, Hash, Library,
-  RefreshCw, Plus, Minus,
-} from 'lucide-react'
+import { Layers, ChevronLeft, ChevronRight, RotateCcw, Loader, AlertCircle, BookOpen, Hash, RefreshCw, Plus, Minus } from 'lucide-react'
 import { flashcardsAPI } from '../api/flashcards'
 import toast from 'react-hot-toast'
 
@@ -127,7 +123,7 @@ export default function FlashcardPanel({ activeDocId }) {
   const [index, setIndex]         = useState(0)
   const [generating, setGenerating] = useState(false)
   const [loadingExisting, setLoadingExisting] = useState(false)
-  const [source, setSource]       = useState('corpus')   // 'corpus' | 'doc'
+  const [source, setSource] = useState('doc')
   const [numCards, setNumCards]   = useState(10)
   const [topic, setTopic]         = useState('')
   const [error, setError]         = useState(null)
@@ -198,18 +194,6 @@ export default function FlashcardPanel({ activeDocId }) {
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
       >
         <button
-          onClick={() => setSource('corpus')}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors"
-          style={{
-            background: source === 'corpus' ? 'var(--bg-card)' : 'transparent',
-            color: source === 'corpus' ? 'var(--text-primary)' : 'var(--text-muted)',
-            border: source === 'corpus' ? '1px solid var(--border-md)' : '1px solid transparent',
-          }}
-        >
-          <Library size={11} />
-          <span className="hidden sm:inline">Corpus</span>
-        </button>
-        <button
           onClick={() => setSource('doc')}
           disabled={!activeDocId}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -252,24 +236,6 @@ export default function FlashcardPanel({ activeDocId }) {
           <Plus size={10} />
         </button>
       </div>
-
-      {/* Topic input (corpus mode only) */}
-      {source === 'corpus' && (
-        <input
-          type="text"
-          value={topic}
-          onChange={e => setTopic(e.target.value)}
-          placeholder="Topic (e.g. Newton's laws)"
-          className="text-xs px-3 py-1.5 rounded-lg outline-none flex-1 min-w-0"
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-primary)',
-          }}
-          onFocus={e => e.target.style.borderColor = 'rgba(245,158,11,0.35)'}
-          onBlur={e => e.target.style.borderColor = 'var(--border)'}
-        />
-      )}
 
       {/* Generate / regenerate */}
       <button
