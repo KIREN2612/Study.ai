@@ -6,7 +6,7 @@ import { documentsAPI } from '../api/client'
 import DocumentList from './DocumentList'
 import UploadButton from './UploadButton'
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, onToggle, onDocSelect }) {
   const { user, logout } = useAuth()
   const [documents, setDocuments]   = useState([])
   const [docsLoading, setDocsLoading] = useState(true)
