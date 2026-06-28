@@ -41,7 +41,8 @@ def generate(
                 detail="Document chunks not found"
             )
 
-        context = "\n\n".join(c["text"] for c in doc_chunks)
+        # Take first 20 chunks max to stay within token limits
+        context = "\n\n".join(c["text"] for c in doc_chunks[:20])
 
     elif request.topic:
         raise HTTPException(
