@@ -10,7 +10,6 @@ from app.flashcards.schemas import (
 from app.flashcards.models import FlashCard
 from app.flashcards.service import generate_flashcards
 from app.flashcards.schemas import FlashCardItem
-from app.retrieval import retrieve
 
 import pickle
 
@@ -45,21 +44,10 @@ def generate(
         context = "\n\n".join(c["text"] for c in doc_chunks)
 
     elif request.topic:
-
-        model = fastapi_request.app.state.model
-        global_index = fastapi_request.app.state.global_index
-        global_chunks = fastapi_request.app.state.global_chunks
-        global_bm25 = fastapi_request.app.state.global_bm25
-
-        chunks = retrieve(
-            request.topic,
-            model,
-            global_index,
-            global_chunks,
-            global_bm25
-        )
-
-        context = "\n\n".join(c["text"] for c in chunks)
+        raise HTTPException(
+        status_code=400,
+        detail="Topic-based flashcards require a document. Please upload a PDF first."
+    )
 
     else:
         raise HTTPException(
