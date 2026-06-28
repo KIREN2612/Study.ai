@@ -20,7 +20,7 @@ function truncate(str, max = 24) {
   return name.length > max ? name.slice(0, max) + '…' : name
 }
 
-export default function DocumentList({ documents, loading, onDelete }) {
+export default function DocumentList({ documents, loading, onDelete, onSelect }) {
   const [deletingId, setDeletingId] = useState(null)
 
   async function handleDelete(docId, filename) {
@@ -63,7 +63,8 @@ export default function DocumentList({ documents, loading, onDelete }) {
       {documents.map(doc => (
         <div
           key={doc.doc_id}
-          className="group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors"
+          onClick={() => onSelect?.(doc.doc_id)}
+          className="group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors cursor-pointer"
           style={{ background: 'transparent' }}
           onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}

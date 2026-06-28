@@ -91,7 +91,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
             {/* Doc list */}
             <section className="space-y-1">
-              <DocumentList documents={documents} loading={docsLoading} onDelete={handleDelete} />
+              <DocumentList documents={documents} loading={docsLoading} onDelete={handleDelete} onSelect={onDocSelect} />
             </section>
           </>
         )}
