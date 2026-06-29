@@ -29,11 +29,24 @@ def generate_flashcards(context: str, num_cards: int) -> list[dict]:
         messages=[{"role": "user", "content": prompt}],
         max_tokens=1500,
         temperature=0.3,
+        reasoning_effort="none"  # disables thinking tokens for qwen3
     )
 
     raw = response.choices[0].message.content
+    
+    # strip think tags if present
+    import re
+    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+    
+    # strip markdown code fences if present
+    raw = re.sub(r'```json|```', '', raw).strip()
+    
     start = raw.find("[")
     end = raw.rfind("]") + 1
+    
+    if start == -1 or end == 0:
+        raise ValueError("LLM did not return valid JSON")
+    
     raw = raw[start:end]
 
     try:
