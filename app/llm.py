@@ -1,8 +1,8 @@
-from google import genai
-from google.genai import types
+from groq import Groq
 import os
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+MODEL = "qwen/qwen3-32b"
 
 def generate_answer(query: str, chunks: list) -> str:
     context = "\n\n".join([c["text"] for c in chunks])
@@ -21,13 +21,11 @@ CONTEXT:
 
 QUESTION: {query}""".format(context=context, query=query)
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            max_output_tokens=800,
-            temperature=0.1,
-        )
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=800,
+        temperature=0.1,
     )
 
-    return response.text
+    return response.choices[0].message.content
