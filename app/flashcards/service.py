@@ -1,9 +1,9 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import os
 import json
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 FLASHCARD_PROMPT = """
 You are an expert tutor. Generate {num_cards} flashcards from the context below.
@@ -24,9 +24,10 @@ CONTEXT:
 def generate_flashcards(context: str, num_cards: int) -> list[dict]:
     prompt = FLASHCARD_PROMPT.format(num_cards=num_cards, context=context)
 
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
             max_output_tokens=1500,
             temperature=0.3,
         )

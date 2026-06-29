@@ -93,4 +93,4 @@ uuid-utils==0.15.0
 uvicorn==0.39.0
 yarl==1.22.0
 zstandard==0.25.0
-google-generativeai>=0.7.0
+google-genai>=0.8.0

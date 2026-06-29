@@ -1,11 +1,8 @@
-import google.generativeai as genai
-from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 import os
 
-load_dotenv()
-
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def generate_answer(query: str, chunks: list) -> str:
     context = "\n\n".join([c["text"] for c in chunks])
@@ -14,22 +11,20 @@ def generate_answer(query: str, chunks: list) -> str:
 
 INSTRUCTIONS:
 1. Read the context carefully and extract relevant information to answer the question.
-2. Even if the context doesn't use the exact same words as the question, reason about what the context is describing and answer accordingly.
-3. Be generous in interpreting the context — if it clearly relates to the question topic, use it.
-4. Only say the context is insufficient if it is genuinely about a completely different topic.
-5. Never fabricate formulas or facts not present in the context.
-6. Format answers clearly with key points highlighted.
+2. Be generous in interpreting the context — if it clearly relates to the question topic, use it.
+3. Only say the context is insufficient if it is genuinely about a completely different topic.
+4. Never fabricate formulas or facts not present in the context.
+5. Format answers clearly with key points highlighted.
 
 CONTEXT:
 {context}
 
-QUESTION: {query}
+QUESTION: {query}""".format(context=context, query=query)
 
-You MUST attempt an answer if the context contains anything relevant to the question."""
-
-    response = model.generate_content(
-        prompt.format(context=context, query=query),
-        generation_config=genai.GenerationConfig(
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
             max_output_tokens=800,
             temperature=0.1,
         )
